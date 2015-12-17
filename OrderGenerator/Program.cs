@@ -11,12 +11,13 @@ namespace OrderGenerator
 {
     class Program
     {
-        private const int ZipCodeCount = 8000;
-        private const int MailCount = 80000;
-        private const int AddressCount = 100000;
-        private const int PersonCount = 100000;
-        private static int _orderCount = 100;
-        private const double PerHour = 750;
+        private static int _zipCodeCount = 10;
+        private static int _mailCount = 10;
+        private static int _addressCount = 10;
+        private static int _personCount = 10;
+        private static int _phoneCount= 10;
+        private static int _orderCount = 10000;
+        private const double DatasetsPerHour = 750;
         private static readonly Random Rnd = new Random();
 
         static void Main(string[] args)
@@ -29,6 +30,7 @@ namespace OrderGenerator
                     return;
                 }
             }
+            SetCounts();
             ConfigureGenerator();
             using (var orderWriter = CreateCsvWriter<Order>("Orders.csv"))
             {
@@ -39,7 +41,17 @@ namespace OrderGenerator
             }
         }
 
- 
+        private static void SetCounts()
+        {
+            _personCount = Math.Min((int)(_orderCount * 0.015), 50000);
+            _addressCount = Math.Min((int)(_orderCount * 0.015), 50000);
+            _mailCount = Math.Min((int)(_orderCount * 0.02), 100000);
+            _phoneCount = Math.Min((int)(_orderCount * 0.02), 100000);
+            _zipCodeCount = Math.Min((int)(_orderCount * 0.01), 3000);
+            Console.WriteLine($"Orders: {_orderCount}, People: {_personCount}, Address: {_addressCount}, Mails: {_mailCount}, ZipCode: {_zipCodeCount}, Phone: {_phoneCount}");
+        }
+
+
         private static void WriteOrders(IEnumerable<Order> orders, ICsvWriter orderWriter, string fileName)
         {
             using (var entryWriter = CreateCsvWriter<Entry>(fileName))
@@ -54,11 +66,11 @@ namespace OrderGenerator
         }
 
         private static double _counter;
-        private static int _oldPercent=-1;
+        private static int _oldPercent = -1;
         private static void WriteCounter()
         {
             _counter++;
-            var percent = (int) (100*(_counter/_orderCount));
+            var percent = (int)(100 * (_counter / _orderCount));
             if (percent == _oldPercent) return;
             _oldPercent = percent;
             Console.WriteLine($"{percent}% Anzahl {_counter}");
@@ -70,7 +82,7 @@ namespace OrderGenerator
             {
                 yield return Generate.New<Order>();
             }
-        } 
+        }
         private static ICsvWriter CreateCsvWriter<T>(string filename)
         {
             Console.WriteLine($"Creating {filename}");
@@ -109,8 +121,9 @@ namespace OrderGenerator
                 .Fill(a => a.Merchant).WithinRange(300, 310)
                 .Fill(a => a.Amount).WithinRange(50, 9999)
                 .Fill(a => a.EMail).WithRandom(GetMailAddresses())
-                .Fill(a => a.Address).WithRandom(Generate.ListOf<Address>(AddressCount))
-                .Fill(a => a.Person).WithRandom(Generate.ListOf<Person>(PersonCount))
+                .Fill(a => a.Phone).WithRandom(GetPhoneNumbers())
+                .Fill(a => a.Address).WithRandom(Generate.ListOf<Address>(_addressCount))
+                .Fill(a => a.Person).WithRandom(Generate.ListOf<Person>(_personCount))
                 .Fill(a => a.Date, GetDate);
         }
 
@@ -118,17 +131,17 @@ namespace OrderGenerator
 
         internal static DateTime GetDate()
         {
-            _offsetSeconds += (60.0*60.0)/PerHour;
+            _offsetSeconds += (60.0 * 60.0) / DatasetsPerHour;
             var dtDateTime = new DateTime(2013, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
             return dtDateTime.AddSeconds(_offsetSeconds).ToLocalTime();
         }
 
         private static string[] GenerateZipCodes()
         {
-            var zipCodes = new string[ZipCodeCount];
+            var zipCodes = new string[_zipCodeCount];
             for (var i = 0; i < zipCodes.Length; i++)
             {
-                zipCodes[i] = $"{Rnd.Next(0, 9999):00000}";
+                zipCodes[i] = $"{Rnd.Next(0, 99999):00000}";
             }
             return zipCodes;
         }
@@ -138,20 +151,31 @@ namespace OrderGenerator
             return Rnd.Next(0, 100) <= threshold;
         }
 
-        private class Mail
+        private class PrecreateClass
         {
             public string EMail { get; set; }
+            public string Phone { get; set; }
         }
 
         private static string[] GetMailAddresses()
         {
-            var mails = new string[MailCount];
-            for (var i = 0; i < mails.Length; i++)
+            var data = new string[_mailCount];
+            for (var i = 0; i < data.Length; i++)
             {
-                var mail = Generate.New<Mail>();
-                mails[i] = mail.EMail;
+                var mail = Generate.New<PrecreateClass>();
+                data[i] = mail.EMail;
             }
-            return mails;
+            return data;
+        }
+        private static string[] GetPhoneNumbers()
+        {
+            var data = new string[_phoneCount];
+            for (var i = 0; i < data.Length; i++)
+            {
+                var mail = Generate.New<PrecreateClass>();
+                data[i] = mail.Phone;
+            }
+            return data;
         }
     }
 }
